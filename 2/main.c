@@ -5,29 +5,34 @@
 int writeMatrix(double** A, int m, int n){
 	//OUTPUTTEST A_B TODO remove
 	for(int i=0;i<m;++i){
+		printf("[");
 		for(int j=0;j<n;++j){
-			printf("%lf ",A[i][j]);
+			printf("%3g",A[i][j]);
+			if(j != n-1){
+				printf(",");
+			}
 		}
-		printf("\n");
+		printf("]\n");
 	}
-	return printf("\n\n");
+	return printf("\n");
+}
+
+int writeVector(double* b, int m){
+	for(int i=0;i<m;++i){
+		printf("[%3g]\n",b[i]);
+	}
+	return printf("\n");
 }
 
 int  Gauss_solve(double** A, double* b, int m, int n){
 	//A ist Matrix mit m Zeilen und n Spalten
-	if(m>n){
-		return 0;
-	}
+	
 	//Diagonalisieren
-	printf("%d %d\n",m,n);
 	for(int j=0;j<m;++j){
-		printf("j = %d\n",j);
 		int isnonzero = 1;
-		printf(" %lf\n",A[j][j]);
 		if(A[j][j] == 0){
 			isnonzero = 0;
 			for(int i = j;i<m; ++i){
-				printf(" i = %d\n",i);
 				if(A[i][j]!=0){
 					double* swap = A[j];
 					A[j] = A[i];
@@ -41,7 +46,6 @@ int  Gauss_solve(double** A, double* b, int m, int n){
 			//Nach unten abziehen
 			for(int k=0;k<m;++k){
 				if(k!=j){
-					printf(" k = %d\n",k);
 					double lambda = A[k][j]/A[j][j];
 					//Matrix
 					for(int l=j;l<n;++l){
@@ -49,8 +53,11 @@ int  Gauss_solve(double** A, double* b, int m, int n){
 					}
 					//Vektor
 					b[k] -= lambda*b[j];
+
+					printf("reduced to:\n");
 					writeMatrix(A,m,n);
-					writeMatrix(&b,1,m);
+					printf("=\n");
+					writeVector(b,m);
 				}
 			}
 		}
@@ -68,7 +75,7 @@ int  Gauss_solve(double** A, double* b, int m, int n){
 		}
 	}
 	writeMatrix(A,m,n);
-	writeMatrix(&b,1,m);
+	writeVector(b,m);
 	return 1;
 }
 
@@ -78,17 +85,27 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 	if(n==0){
 		return 0;
 	}
+
+	//Gauss if Simplex not needed
 	if(n<=m){
-		//TODO Gauss
+		int solvable = Gauss_solve(A,b,m,n);
+		if(solvable){
+			printf("result = \n");
+			writeVector(b,m);
+		}else{
+			printf("INFEASIBLE (Gauss)\n");
+		}
 		return 0;
 	}
+
 	int* B = malloc(m*sizeof(int));
-	
 	//2
 	//Compute feasible Basis
 	B[0]=0;
 	double** A_B;
 	int Bsize = 1;
+	printf("Basis is beeing generated\n");
+
 	for(int add=1;add<n;++add){
 		if(Bsize==m){
 			break;
@@ -107,48 +124,37 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 				}
 			}
 		}
-
+		
+		printf("trying Basis:\n");
 		writeMatrix(A_B,m,Bsize+1);
 
-		printf("m = %d, n = %d\n",m,n);
 		//Gauss Elimination auf A_B
 		for(int i=0;i<Bsize+1;++i){
-			printf("i = %d\n",i);
 			for(int j=0;j<m;++j){
-				printf(" j = %d\n",j);
 				if(A_B[j][i]!=0){
-					printf("  !=0\n");
 					double lambda = A_B[j][i];
+
 					//Spalte normieren
 					for(int k = j;k<m;++k){
-						printf("   k = %d\n",k);
 						A_B[k][i] = A_B[k][i] / lambda;
-						writeMatrix(A_B,m,Bsize+1);
 					}
 					//von Zeilen unter j abziehen
 					if(j!=m-1){
-						printf("  != m-1\n");
 						for(int k=j+1;k<m;++k){
-							printf("   k = %d\n",k);
 							lambda = A_B[k][i];
 							for(int l=i;l<Bsize+1;++l){
-								printf("    l = %d\n",l);
 								A_B[k][l] -= lambda*A_B[j][l];
-								writeMatrix(A_B,m,Bsize+1);
-
 							}
 						}
 					}
 					//von Spalten rechts von j azbziehen
 					if(i!=Bsize){
-						printf("  != Bsize\n");
 						for(int k=i+1;k<Bsize+1;++k){
-							printf("   k = %d\n",k);
 							A_B[j][k]=0;
-							writeMatrix(A_B,m,Bsize+1);
 						}
 					}
 				}
+				printf("reduced to:\n");
 				writeMatrix(A_B,m,Bsize+1);
 			}
 		}
@@ -178,68 +184,161 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 	free(A_B);
 
 	//OUTPUT B
-	printf("B = ");
+	printf("Basis is [");
 	for(int i=0;i<Bsize;++i){
-		printf("%d ;",B[i]);
+		printf("%d",B[i]);
+		if(i!=Bsize-1)printf(",");
 	}
-	printf("\n");
+	printf("]\n");
 	
 	//2
 	if(Bsize != m){
-		printf("INFEASIBLE\n");
+		printf("INFEASIBLE, because Basis too small\n");
 		free(B);
 		return 0;
 	}
-	
-	//3
-	//set N
-	int Bindex = 0;
-	int Nindex = 0;
-	int* N = malloc(sizeof(int)*(n-m));
-	for(int i=0;i<n;++i){
-		if(B[Bindex]==i){
-			++Bindex;
-		}else{
-			N[Nindex]=i;
-			++Nindex;
+	while(1){	
+		//3
+		//set N
+		int Bindex = 0;
+		int Nindex = 0;
+		int* N = malloc(sizeof(int)*(n-m));
+		for(int i=0;i<n;++i){
+			if(B[Bindex]==i){
+				++Bindex;
+			}else{
+				N[Nindex]=i;
+				++Nindex;
+			}
 		}
-	}
-
-	//OUTPUT N
-	printf("N = ");
-	for(int i=0;i<n-m;++i){
-		printf("%d ;",N[i]);
-	}
-	printf("\n");
-
-	double* p = malloc(m*sizeof(double));
-	//Compute Basic solution / Q
 	
-	double** Q = malloc(m*sizeof(double*));
-	for(int i=0;i<m;++i){
-		Q[i] = malloc(n*sizeof(double));
-		for(int j=0; j<m;++j){
-			Q[i][j] = A[i][B[j]];
+		//OUTPUT N
+		printf("Therefore N is [");
+		for(int i=0;i<n-m;++i){
+			printf("%d",N[i]);
+			if(i!=n-m-1)printf(",");
 		}
-		for(int j = m; j<n; ++j){
-			Q[i][j] = A[i][N[m-j]];
+		printf("]\n");
+	
+		double* p = malloc(m*sizeof(double));
+		//3.5 & 4
+		//Compute Basic solution / Q
+		
+		double** Q = malloc(m*sizeof(double*));
+		for(int i=0;i<m;++i){
+			Q[i] = malloc(n*sizeof(double));
+			for(int j=0; j<m;++j){
+				Q[i][j] = A[i][B[j]];
+			}
+			for(int j = m; j<n; ++j){
+				Q[i][j] = A[i][N[m-j]];
+			}
+			p[i] = b[i];
 		}
-		p[i] = b[i];
+		//p ist zulässige Basislösung
+		//Q[m] bis Q[n-1] ist Q aus dem Alg
+		Gauss_solve(Q,p,m,n);
+		
+		//calculate r
+		double* rstrich = malloc(sizeof(double)*n);
+		for(int i=0;i<n;++i){
+			rstrich[i]=c[i];
+		}
+	
+		int Biterator = 0;
+		for(int i=0;i<n;++i){
+			if(i == B[Biterator]){
+				for(int j=m;j<n;++j){
+					//TODO faktor überprüfen
+					rstrich[N[j-m]]+=rstrich[B[Biterator]]*Q[Biterator][j];
+				}
+				
+				++Biterator;
+			}
+		}
+		writeMatrix(&rstrich,1,n);
+		double* r = malloc(sizeof(double)*(n-m));
+	
+		int allnegative = 1;
+		for(int i=0;i<n-m;++i){
+			r[i] = rstrich[N[i]];
+			if(r[i]>0){
+				allnegative = 0;
+			}
+		}
+		free(rstrich);
+		printf("r ist :\n");
+		writeVector(r,n-m);
+		
+		//5
+		if(allnegative == 1){
+			double * x = calloc(n,sizeof(double));
+			for(int i=0;i<m;++i){
+				x[B[i]] = p[i];
+				free(Q[i]);
+			}	
+			printf("result = \n");
+			writeVector(x,n);
+			free(B);
+			free(N);
+			free(p);
+			free(r);
+			free(Q);
+			free(x);
+			return 0;
+		}
+		//6
+		//Blands rule pt. 1 
+		int alpha;
+		for(int i=0;i<n-m;++i){
+			if(r[i]>0){
+				alpha = N[i];
+				break;
+			}
+		}
+	
+		//7 & 8
+		//BLands rule pt. 2
+		int beta=-1;
+		for(int i=0;i<m;++i){
+			if(Q[i][m+alpha]<0){
+				if(beta==-1){
+					beta = B[i];
+				}else{
+					if(p[beta] / Q[beta][m+alpha] < p[i] / Q[i][m+alpha]){
+						beta = B[i];
+					}
+				}
+			}
+		}
+
+		if(beta==-1){
+			printf("UNBOUNDED, because no negative entry in r\n");
+			return 0;
+		}
+	
+		//9
+		int* newB = malloc(m*sizeof(int));
+		int newBiterator = 0;
+		printf("new Basis is [");
+		for(int i = 0;i<m;++i){
+			if(B[i] != beta){
+				newB[newBiterator]=B[i];
+				++newBiterator;
+			}
+			if(i==alpha){
+				newB[newBiterator]=alpha;
+				++newBiterator;
+			}
+		}
+		for(int i=0;i<m;++i){
+			printf("%d",newB[i]);
+			if(i!=m-1)printf(",");
+		}
+		printf("]\n");
+		free(B);
+		B=newB;
 	}
-	//p ist zulässige Basislösung
-	//Q[m] bis Q[n-1] ist Q aus dem Alg
-	Gauss_solve(Q,p,m,n);
-	
-	//calculate r?
-	
-
-
-	//TODO free Q
-
-
-	free(B);
-	free(N);
-	return 0;
 }
 
 
@@ -258,5 +357,11 @@ int main(){
 	if(read_LP(in,&m,&n,&A,&b,&c)){printf("Probleme beim Datei auslesen\n");return EXIT_FAILURE;}
 
 	int result = SimplexAlgorithm(A,b,c,m,n);
+	free(b);
+	free(c);
+	for(int i = 0;i<m;++i){
+		free(A[i]);
+	}
+	free(A);
 	return EXIT_SUCCESS;
 }
