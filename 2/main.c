@@ -42,8 +42,11 @@ int  Gauss_solve(double** A, double* b, int m, int n){
 			for(int i = j;i<m; ++i){
 				if(A[i][j]!=0){
 					double* swap = A[j];
+					double bswap = b[j];
 					A[j] = A[i];
+					b[j] = b[i];
 					A[i] = swap;
+					b[i] = bswap;
 					isnonzero = 1;
 					break;
 				}
@@ -71,16 +74,23 @@ int  Gauss_solve(double** A, double* b, int m, int n){
 	}
 
 	//normaliseren
+	int unbound = 0;
 	for(int i=0;i<m;++i){
 		if(i<n||A[i][i]!=0){
 			double lambda = A[i][i];
 			b[i]/=lambda;
 			for(int j=0;j<n;++j){
 				if(A[i][j] != 0)A[i][j]/=lambda;
+				if(j!=i){
+					if(A[i][j]!=0){
+						unbound = 1;
+					}
+				}
 			}
 		}else{
+			//not feasible
 			if(b[i]!=0){
-				return 0;
+				return 1;
 			}
 		}
 	}
@@ -88,24 +98,35 @@ int  Gauss_solve(double** A, double* b, int m, int n){
 	writeMatrix(A,m,n);
 	printf("=\n");
 	writeVector(b,m);
-	return 1;
+
+	//slackvariable with no boundries exists -> unbound
+	if(unbound ){
+		return 2;
+	}
+	return 0;
 }
 
 
 int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
-	//A ist eine Matrix mit m Zeilen und n Spalten
-	if(n==0){
-		return 0;
-	}
 
+
+	//A ist eine Matrix mit m Zeilen und n Spalten
+	
+	//leere Matrix wird nicht akzeptiert
+	if(n==0){
+		printf("empty Matrix!\n");
+	}
+	
 	//Gauss if Simplex not needed
 	if(n<=m){
 		int solvable = Gauss_solve(A,b,m,n);
-		if(solvable){
+		if(solvable==0){
 			printf("result = \n");
 			writeVector(b,m);
-		}else{
+		}else if(solvable==1){
 			printf("\nINFEASIBLE (Gauss)\n");
+		}else{
+			printf("\nUNBOUNDED (Gauss)\n");
 		}
 		return 0;
 	}
@@ -118,10 +139,14 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 	int Bsize = 1;
 	printf("----------\nBasis is beeing generated\n----------\n");
 
+	//durch {1,...,n} iterieren um Kandidaten für die Basis zu erhalten
 	for(int add=1;add<n;++add){
+
+		//falls m linear unabhängige Vektoren gefunden wurden, ist B eine feasible Basis
 		if(Bsize==m){
 			break;
 		}
+
 		//Check for linear independence
 		
 		//fill AB with A_B and A_i
@@ -140,17 +165,19 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		printf("\ntrying Basis:\n");
 		writeMatrix(A_B,m,Bsize+1);
 
-		//Gauss Elimination auf A_B
+		//modifizierte Gauss Elimination auf A_B um auf lineare unabhängigkeit zu testen
 		for(int i=0;i<Bsize+1;++i){
 			for(int j=0;j<m;++j){
 				if(A_B[j][i]!=0){
 					double lambda = A_B[j][i];
 
-					//Spalte normieren
+					//Spalte normieren 
+					//ist das selbe wie v -> lambda*v
 					for(int k = j;k<m;++k){
 						A_B[k][i] = A_B[k][i] / lambda;
 					}
 					//von Zeilen unter j abziehen
+					//Gauseliminierung
 					if(j!=m-1){
 						for(int k=j+1;k<m;++k){
 							lambda = A_B[k][i];
@@ -160,6 +187,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 						}
 					}
 					//von Spalten rechts von j azbziehen
+					//w = w-v. geht weil pivot spalten
 					if(i!=Bsize){
 						for(int k=i+1;k<Bsize+1;++k){
 							A_B[j][k]=0;
@@ -172,6 +200,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		}
 
 		int addi = 1;
+
 		//leere Spalte -> i wird nicht zu B hinzugefügt
 		for(int i=0;i<Bsize+1;++i){
 			int nonnull = 0;
@@ -185,18 +214,20 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 				break;
 			}
 		}
+
+		//falls die Vektoren linearely independent sind wird der Index zu B hinzugefügt
 		if(addi==1){
 			B[Bsize]=add;
 			++Bsize;
 		}
+		for(int i=0;i<m;++i){
+			free(A_B[i]);
+		}
+		free(A_B);
 	}
-	for(int i=0;i<m;++i){
-		free(A_B[i]);
-	}
-	free(A_B);
 
 	//OUTPUT B
-	printf("\nBasis is [");
+	printf("\nBasis B is [");
 	for(int i=0;i<Bsize;++i){
 		printf("%d",B[i]);
 		if(i!=Bsize-1)printf(",");
@@ -211,6 +242,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 	}
 	while(1){
 		//3
+
 		//set N
 		int Bindex = 0;
 		int Nindex = 0;
@@ -231,8 +263,8 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 			if(i!=n-m-1)printf(",");
 		}
 		printf("]\n");
-	
 		double* p = malloc(m*sizeof(double));
+		
 		printf("-----------\nCalculating Basic solution and Q\n----------\n");
 		//3.5 & 4
 		//Compute Basic solution / Q
@@ -248,9 +280,12 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 			p[i] = b[i];
 		}
 
+		//Q ist A_B in den ersten m Spalten, und A_N in den anderen n-m
+		//Gaußeliminierung auf Q,b macht daraus ( 1_m | -Q_x_N),p, sodass x_B = p + Q_x_N gilt
 		writeMatrix(Q,m,n);
-		//p ist zulässige Basislösung
-		//Q[m] bis Q[n-1] ist Q aus dem Alg
+		printf("=\n");
+		writeVector(p,m);
+
 		Gauss_solve(Q,p,m,n);
 		
 		//calculate r
@@ -258,6 +293,8 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		for(int i=0;i<n;++i){
 			rstrich[i]=c[i];
 		}
+
+		//macht aus rstrich (r_i in rstrich_N_i) und (0 in rstrich_B_i)
 		for(int i=0;i<m;++i){
 			if(rstrich[B[i]]!=0){
 				for(int j=m;j<n;++j){
@@ -267,7 +304,8 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 				rstrich[B[i]]=0;
 			}
 		}
-		//das kann man bestimmt besser machen aber hey :D
+
+		//liest r aus rstrich
 		double* r = malloc(sizeof(double)*(n-m));
 		int allnegative = 1;
 		for(int i=0;i<n-m;++i){
@@ -277,27 +315,28 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 			}
 		}
 		free(rstrich);	
-		//T(B) printen
 		
-		//über dem strich
+		//T(B) printen
 		printf("\n----------\nSimplex Tableau:\n----------\n\n");
 		for(int i=0;i<m;++i){
 			printf("x_%d = %3g + ",B[i],p[i]);
 			for(int j=0;j<n-m;++j){
+				//Q[m] bis Q[n] ist -Q_x_N, deswegen -1*...
 				printf("%3g*x_%d",(Q[i][m+j]!=0?-1:1)*Q[i][m+j],N[j]);
 				if(j != n-m-1)printf(" + ");
 			}
 			printf("\n");
 		}
-
 		printf("-----------------------------------\n");
-		//unter dem strich
+		//z0 ist nicht wichtig für meine Regel, deswegen nicht berechnet
 		printf("z   = z_0 + ");
 		for(int i=0;i<n-m;++i){
 			printf("%3g*x_%d",r[i],N[i]);
 			if(i != n-m-1)printf(" + ");
 		}
 		printf("\n\n");
+
+
 		//5
 		if(allnegative == 1){
 			double * x = calloc(n,sizeof(double));
@@ -318,7 +357,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 
 		printf("\n----------\nChoosing Indices to swap\n----------\n");
 		//6
-		//Blands rule pt. 1 
+		//Blands rule pt. 1, wählt alpha minimal, sodass r_alpha > 0
 		int alpha;
 		for(int i=0;i<n-m;++i){
 			if(r[i]>0){
@@ -326,23 +365,26 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 				break;
 			}
 		}
-	
+		printf("alpha = %d nach Bland's Regel\n",N[alpha]);	
 		//7 & 8
-		//BLands rule pt. 2
+		//BLands rule pt. 2, wählt beta minimal, sodass Q_i,alpha < 0 und Q_beta_alpha = max(Q_i,alpha | Q_i,alpha < 0)
 		int beta=-1;
 		for(int i=0;i<m;++i){
-			if((-1*Q[i][m+alpha])<0){
+			if(Q[i][m+alpha]>0){
 				if(beta==-1){
-					beta = B[i];
+					beta = i;
 				}else{
+					//Q[m] bis Q[n] ist -Q_x_N
 					if(p[beta]/(-1*Q[beta][m+alpha]) < p[i]/(-1*Q[i][m+alpha])){
-						beta = B[i];
+						beta = i;
 					}
 				}
 			}
 		}
 
+		//wurde kein beta gefunden ist das LP unbounded
 		if(beta==-1){
+			printf("\nUNBOUNDED, because no negative entry in Q_x_%d for all i\n",N[alpha]);
 			free(B);
 			free(N);
 			for(int i=0;i<m;++i){
@@ -351,25 +393,29 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 			free(Q);
 			free(p);
 			free(r);
-			printf("\nUNBOUNDED, because no negative entry in Q_(i,a) for all i\n");
 			return 0;
 		}
-	
+		printf("beta = %d nach Bland's Regel\n",B[beta]);
+		
 		printf("\n----------\nGenerating new Base\n----------\n");
 		//9
+		//B = B\beta v alpha
 		int* newB = malloc(m*sizeof(int));
 		int newBiterator = 0;
 		printf("\nnew Basis is [");
 		for(int i = 0;i<n;++i){
-			if((contains(B,m,i)&&i!=beta) || i == alpha){
+			if((contains(B,m,i)&&i!=B[beta]) || i == N[alpha]){
 				newB[newBiterator]=i;
 				++newBiterator;
 			}
 		}
+		//OUTPUT B
 		for(int i=0;i<m;++i){
 			printf("%d",newB[i]);
 			if(i!=m-1)printf(",");
 		}
+
+		//free everything
 		printf("]\n");
 		free(B);
 		B=newB;
@@ -380,6 +426,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		free(Q);
 		free(p);
 		free(r);
+		//goto 3
 	}
 }
 
