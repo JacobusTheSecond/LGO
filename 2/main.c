@@ -289,6 +289,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		Gauss_solve(Q,p,m,n);
 		
 		//calculate r
+		double z_0 = 0;
 		double* rstrich = malloc(sizeof(double)*n);
 		for(int i=0;i<n;++i){
 			rstrich[i]=c[i];
@@ -299,8 +300,9 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 			if(rstrich[B[i]]!=0){
 				for(int j=m;j<n;++j){
 					// "-", weil Q anderes Vorzeichen hat
-					rstrich[N[j-m]]-=rstrich[B[i]]*Q[i][j];
+					rstrich[N[j-m]]-=rstrich[B[i]]*Q[i][j];	
 				}
+				z_0 += rstrich[B[i]]*p[i];
 				rstrich[B[i]]=0;
 			}
 		}
@@ -329,7 +331,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		}
 		printf("-----------------------------------\n");
 		//z0 ist nicht wichtig für meine Regel, deswegen nicht berechnet
-		printf("z   = z_0 + ");
+		printf("z   = %3g + ",z_0);
 		for(int i=0;i<n-m;++i){
 			printf("%3g*x_%d",r[i],N[i]);
 			if(i != n-m-1)printf(" + ");
