@@ -14,21 +14,28 @@ int writeMatrix(double** A, int m, int n){
 		}
 		printf("]\n");
 	}
-	return printf("\n");
+	return 0;
 }
 
 int writeVector(double* b, int m){
 	for(int i=0;i<m;++i){
 		printf("[%3g]\n",b[i]);
 	}
-	return printf("\n");
+	return 0;
+}
+
+int contains(int* Array,int size, int check){
+	for(int i=0;i<size;++i){
+		if(Array[i]==check)return 1;
+	}
+	return 0;
 }
 
 int  Gauss_solve(double** A, double* b, int m, int n){
 	//A ist Matrix mit m Zeilen und n Spalten
 	
 	//Diagonalisieren
-	for(int j=0;j<m;++j){
+	for(int j=0;j<((m<n)?m:n);++j){
 		int isnonzero = 1;
 		if(A[j][j] == 0){
 			isnonzero = 0;
@@ -54,7 +61,7 @@ int  Gauss_solve(double** A, double* b, int m, int n){
 					//Vektor
 					b[k] -= lambda*b[j];
 
-					printf("reduced to:\n");
+					printf("\nreduced to:\n");
 					writeMatrix(A,m,n);
 					printf("=\n");
 					writeVector(b,m);
@@ -65,16 +72,21 @@ int  Gauss_solve(double** A, double* b, int m, int n){
 
 	//normaliseren
 	for(int i=0;i<m;++i){
-		if(A[i][i]!=0){
-			b[i]/= A[i][i];
-			A[i][i]=1;
+		if(i<n||A[i][i]!=0){
+			double lambda = A[i][i];
+			b[i]/=lambda;
+			for(int j=0;j<n;++j){
+				if(A[i][j] != 0)A[i][j]/=lambda;
+			}
 		}else{
 			if(b[i]!=0){
 				return 0;
 			}
 		}
 	}
+	printf("\nnormalised to:\n");
 	writeMatrix(A,m,n);
+	printf("=\n");
 	writeVector(b,m);
 	return 1;
 }
@@ -93,7 +105,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 			printf("result = \n");
 			writeVector(b,m);
 		}else{
-			printf("INFEASIBLE (Gauss)\n");
+			printf("\nINFEASIBLE (Gauss)\n");
 		}
 		return 0;
 	}
@@ -104,7 +116,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 	B[0]=0;
 	double** A_B;
 	int Bsize = 1;
-	printf("Basis is beeing generated\n");
+	printf("----------\nBasis is beeing generated\n----------\n");
 
 	for(int add=1;add<n;++add){
 		if(Bsize==m){
@@ -125,7 +137,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 			}
 		}
 		
-		printf("trying Basis:\n");
+		printf("\ntrying Basis:\n");
 		writeMatrix(A_B,m,Bsize+1);
 
 		//Gauss Elimination auf A_B
@@ -154,7 +166,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 						}
 					}
 				}
-				printf("reduced to:\n");
+				printf("\nreduced to:\n");
 				writeMatrix(A_B,m,Bsize+1);
 			}
 		}
@@ -184,7 +196,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 	free(A_B);
 
 	//OUTPUT B
-	printf("Basis is [");
+	printf("\nBasis is [");
 	for(int i=0;i<Bsize;++i){
 		printf("%d",B[i]);
 		if(i!=Bsize-1)printf(",");
@@ -193,11 +205,11 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 	
 	//2
 	if(Bsize != m){
-		printf("INFEASIBLE, because Basis too small\n");
+		printf("\nINFEASIBLE, because Basis too small\n");
 		free(B);
 		return 0;
 	}
-	while(1){	
+	while(1){
 		//3
 		//set N
 		int Bindex = 0;
@@ -213,7 +225,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		}
 	
 		//OUTPUT N
-		printf("Therefore N is [");
+		printf("\nTherefore N is [");
 		for(int i=0;i<n-m;++i){
 			printf("%d",N[i]);
 			if(i!=n-m-1)printf(",");
@@ -221,9 +233,9 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		printf("]\n");
 	
 		double* p = malloc(m*sizeof(double));
+		printf("-----------\nCalculating Basic solution and Q\n----------\n");
 		//3.5 & 4
 		//Compute Basic solution / Q
-		
 		double** Q = malloc(m*sizeof(double*));
 		for(int i=0;i<m;++i){
 			Q[i] = malloc(n*sizeof(double));
@@ -231,10 +243,12 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 				Q[i][j] = A[i][B[j]];
 			}
 			for(int j = m; j<n; ++j){
-				Q[i][j] = A[i][N[m-j]];
+				Q[i][j] = A[i][N[j-m]];
 			}
 			p[i] = b[i];
 		}
+
+		writeMatrix(Q,m,n);
 		//p ist zulässige Basislösung
 		//Q[m] bis Q[n-1] ist Q aus dem Alg
 		Gauss_solve(Q,p,m,n);
@@ -244,21 +258,17 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		for(int i=0;i<n;++i){
 			rstrich[i]=c[i];
 		}
-	
-		int Biterator = 0;
-		for(int i=0;i<n;++i){
-			if(i == B[Biterator]){
+		for(int i=0;i<m;++i){
+			if(rstrich[B[i]]!=0){
 				for(int j=m;j<n;++j){
-					//TODO faktor überprüfen
-					rstrich[N[j-m]]+=rstrich[B[Biterator]]*Q[Biterator][j];
+					// "-", weil Q anderes Vorzeichen hat
+					rstrich[N[j-m]]-=rstrich[B[i]]*Q[i][j];
 				}
-				
-				++Biterator;
+				rstrich[B[i]]=0;
 			}
 		}
-		writeMatrix(&rstrich,1,n);
+		//das kann man bestimmt besser machen aber hey :D
 		double* r = malloc(sizeof(double)*(n-m));
-	
 		int allnegative = 1;
 		for(int i=0;i<n-m;++i){
 			r[i] = rstrich[N[i]];
@@ -266,10 +276,28 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 				allnegative = 0;
 			}
 		}
-		free(rstrich);
-		printf("r ist :\n");
-		writeVector(r,n-m);
+		free(rstrich);	
+		//T(B) printen
 		
+		//über dem strich
+		printf("\n----------\nSimplex Tableau:\n----------\n\n");
+		for(int i=0;i<m;++i){
+			printf("x_%d = %3g + ",B[i],p[i]);
+			for(int j=0;j<n-m;++j){
+				printf("%3g*x_%d",(Q[i][m+j]!=0?-1:1)*Q[i][m+j],N[j]);
+				if(j != n-m-1)printf(" + ");
+			}
+			printf("\n");
+		}
+
+		printf("-----------------------------------\n");
+		//unter dem strich
+		printf("z   = z_0 + ");
+		for(int i=0;i<n-m;++i){
+			printf("%3g*x_%d",r[i],N[i]);
+			if(i != n-m-1)printf(" + ");
+		}
+		printf("\n\n");
 		//5
 		if(allnegative == 1){
 			double * x = calloc(n,sizeof(double));
@@ -277,7 +305,7 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 				x[B[i]] = p[i];
 				free(Q[i]);
 			}	
-			printf("result = \n");
+			printf("\nresult = \n");
 			writeVector(x,n);
 			free(B);
 			free(N);
@@ -287,12 +315,14 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 			free(x);
 			return 0;
 		}
+
+		printf("\n----------\nChoosing Indices to swap\n----------\n");
 		//6
 		//Blands rule pt. 1 
 		int alpha;
 		for(int i=0;i<n-m;++i){
 			if(r[i]>0){
-				alpha = N[i];
+				alpha = i;
 				break;
 			}
 		}
@@ -301,11 +331,11 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		//BLands rule pt. 2
 		int beta=-1;
 		for(int i=0;i<m;++i){
-			if(Q[i][m+alpha]<0){
+			if((-1*Q[i][m+alpha])<0){
 				if(beta==-1){
 					beta = B[i];
 				}else{
-					if(p[beta] / Q[beta][m+alpha] < p[i] / Q[i][m+alpha]){
+					if(p[beta]/(-1*Q[beta][m+alpha]) < p[i]/(-1*Q[i][m+alpha])){
 						beta = B[i];
 					}
 				}
@@ -313,21 +343,26 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		}
 
 		if(beta==-1){
-			printf("UNBOUNDED, because no negative entry in r\n");
+			free(B);
+			free(N);
+			for(int i=0;i<m;++i){
+				free(Q[i]);
+			}
+			free(Q);
+			free(p);
+			free(r);
+			printf("\nUNBOUNDED, because no negative entry in Q_(i,a) for all i\n");
 			return 0;
 		}
 	
+		printf("\n----------\nGenerating new Base\n----------\n");
 		//9
 		int* newB = malloc(m*sizeof(int));
 		int newBiterator = 0;
-		printf("new Basis is [");
-		for(int i = 0;i<m;++i){
-			if(B[i] != beta){
-				newB[newBiterator]=B[i];
-				++newBiterator;
-			}
-			if(i==alpha){
-				newB[newBiterator]=alpha;
+		printf("\nnew Basis is [");
+		for(int i = 0;i<n;++i){
+			if((contains(B,m,i)&&i!=beta) || i == alpha){
+				newB[newBiterator]=i;
 				++newBiterator;
 			}
 		}
@@ -338,17 +373,29 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		printf("]\n");
 		free(B);
 		B=newB;
+		free(N);
+		for(int i=0;i<m;++i){
+			free(Q[i]);
+		}
+		free(Q);
+		free(p);
+		free(r);
 	}
 }
 
 
 
-int main(){
-	//Eingabe für unterschiedliche Instanzen
-	char* in = malloc(256);
-	printf("Programm zur Bestimmung der Lösbarkeit eines linearen Programmes\nDatei-Pfad der zu analysierenden Instanzen eingeben:\n");
-	scanf(" %s",in);
-	//Deklaration aller notweniden Felder
+int main(int argc, char* argv[]){
+	char* in;
+	if(argc==1){
+		//Eingabe für unterschiedliche Instanzen
+		in = malloc(256);
+		printf("Programm zum Lösen eines Linearen Programmes mit dem Simplex Algorithmuses.\nDatei-Pfad der zu analysierenden Instanzen eingeben:\n");
+		scanf(" %s",in);
+		//Deklaration aller notweniden Felder
+	}else{
+		in = argv[1];
+	}
 	double** A;
 	double* b;
 	double* c;
@@ -363,5 +410,6 @@ int main(){
 		free(A[i]);
 	}
 	free(A);
+	if(argc==1)free(in);
 	return EXIT_SUCCESS;
 }
