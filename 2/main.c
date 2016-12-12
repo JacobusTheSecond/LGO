@@ -7,8 +7,8 @@ int writeMatrix(double** A, int m, int n){
 	for(int i=0;i<m;++i){
 		printf("[");
 		for(int j=0;j<n;++j){
-			printf("%3g",A[i][j]);
-			if(j != n-1){
+			printf("%6.3g",A[i][j]);
+			if(j < n-1){
 				printf(",");
 			}
 		}
@@ -19,7 +19,7 @@ int writeMatrix(double** A, int m, int n){
 
 int writeVector(double* b, int m){
 	for(int i=0;i<m;++i){
-		printf("[%3g]\n",b[i]);
+		printf("[%6.3g]\n",b[i]);
 	}
 	return 0;
 }
@@ -55,7 +55,7 @@ int  Gauss_solve(double** A, double* b, int m, int n){
 		if(isnonzero == 1){
 			//Nach unten abziehen
 			for(int k=0;k<m;++k){
-				if(k!=j){
+				if(k!=j&&A[k][j]!=0){
 					double lambda = A[k][j]/A[j][j];
 					//Matrix
 					for(int l=j;l<n;++l){
@@ -246,11 +246,13 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		//set N
 		int Bindex = 0;
 		int Nindex = 0;
-		int* N = malloc(sizeof(int)*(n-m));
+		int* N = malloc((n-m)*sizeof(int));
 		for(int i=0;i<n;++i){
-			if(B[Bindex]==i){
+			if(Bindex < m && B[Bindex]==i){
+			//	printf("noot noot\n");
 				++Bindex;
 			}else{
+			//	printf("doot doot\n");
 				N[Nindex]=i;
 				++Nindex;
 			}
@@ -268,9 +270,11 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		printf("-----------\nCalculating Basic solution and Q\n----------\n");
 		//3.5 & 4
 		//Compute Basic solution / Q
+
+
 		double** Q = malloc(m*sizeof(double*));
 		for(int i=0;i<m;++i){
-			Q[i] = malloc(n*sizeof(double));
+			Q[i] = calloc(n,sizeof(double));
 			for(int j=0; j<m;++j){
 				Q[i][j] = A[i][B[j]];
 			}
@@ -279,7 +283,6 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 			}
 			p[i] = b[i];
 		}
-
 		//Q ist A_B in den ersten m Spalten, und A_N in den anderen n-m
 		//Gaußeliminierung auf Q,b macht daraus ( 1_m | -Q_x_N),p, sodass x_B = p + Q_x_N gilt
 		writeMatrix(Q,m,n);
@@ -321,19 +324,19 @@ int SimplexAlgorithm(double** A, double* b, double* c,int m,int n){
 		//T(B) printen
 		printf("\n----------\nSimplex Tableau:\n----------\n\n");
 		for(int i=0;i<m;++i){
-			printf("x_%d = %3g + ",B[i],p[i]);
+			printf("x_%d = %6.3g + ",B[i],p[i]);
 			for(int j=0;j<n-m;++j){
 				//Q[m] bis Q[n] ist -Q_x_N, deswegen -1*...
-				printf("%3g*x_%d",(Q[i][m+j]!=0?-1:1)*Q[i][m+j],N[j]);
+				printf("%6.3g*x_%d",(Q[i][m+j]!=0?-1:1)*Q[i][m+j],N[j]);
 				if(j != n-m-1)printf(" + ");
 			}
 			printf("\n");
 		}
 		printf("-----------------------------------\n");
 		//z0 ist nicht wichtig für meine Regel, deswegen nicht berechnet
-		printf("z   = %3g + ",z_0);
+		printf("z   = %6.3g + ",z_0);
 		for(int i=0;i<n-m;++i){
-			printf("%3g*x_%d",r[i],N[i]);
+			printf("%6.3g*x_%d",r[i],N[i]);
 			if(i != n-m-1)printf(" + ");
 		}
 		printf("\n\n");
@@ -439,7 +442,7 @@ int main(int argc, char* argv[]){
 	if(argc==1){
 		//Eingabe für unterschiedliche Instanzen
 		in = malloc(256);
-		printf("Programm zum Lösen eines Linearen Programmes mit dem Simplex Algorithmuses.\nDatei-Pfad der zu analysierenden Instanzen eingeben:\n");
+		printf("Programm zum Lösen eines Linearen Programmes mit dem Simplex Algorithmuses.\nBitte beachten sie, dass die Datei nur im Ax=b, und nicht im Ax<=b sein muss.\nDatei-Pfad der zu analysierenden Instanzen eingeben:\n");
 		scanf(" %s",in);
 		//Deklaration aller notweniden Felder
 	}else{
